@@ -445,7 +445,7 @@ const contractNftABI = [
   }
 ];
 
-const contractNftAddr = '0xc7fC4Faa006f94Cc4ea490fAc3DD56Ae5bd5ecAd';
+const contractNftAddr = '0x4078b61a70ae9a36b1c1c380e1909b02af9590cb';
 
 const provider = new ethers.providers.AlchemyProvider(
   'goerli',
@@ -460,7 +460,6 @@ router.get('/', function(req, res, next) {
 });
 
 router.get('/jobs', async function(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   const client = createClient({
     connectionString: process.env.POSTGRES_URL,
   });
@@ -476,7 +475,6 @@ router.get('/jobs', async function(req, res, next) {
 });
 
 router.get('/job', async function(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   const client = createClient({
     connectionString: process.env.POSTGRES_URL,
   });
@@ -494,11 +492,9 @@ router.get('/job', async function(req, res, next) {
 });
 
 router.get('/nft', async function(req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   
   const jobid = req.query.jobid;
   const useraddress = req.query.useraddress;
-  console.log('useraddress==', useraddress);
 
   const contractNft = new ethers.Contract(
     contractNftAddr,
@@ -514,13 +510,43 @@ router.get('/nft', async function(req, res, next) {
 
   const nft = `ipfs://${metadataCID}`;
 
-  console.log('nft===', nft);
-
   await contractNft.safeMint(useraddress, nft);
 
   console.log('nft minted');
   res.status(200).json({result:true});
+})
 
+router.get('/nft/transfer', async function(req, res, next) {
+  
+  const jobid = req.query.jobid;
+  const from = req.query.from;
+  const to = req.query.to;
+
+  const contractNft = new ethers.Contract(
+    contractNftAddr,
+    contractNftABI,
+    wallet
+  );
+
+  let tokenId = '';
+  if (jobid == 1) {
+    tokenId = 1;
+  } else {
+    tokenId = 1;
+  }
+
+
+  // create the signer instance
+  const wallet1 = new ethers.Wallet(process.env.PRIVATE_KEY_WINTER, provider);
+
+  const tx = await contractNft.connect(wallet1).setApprovalForAll(to, true);
+  await tx.wait();
+  console.log("setApprovalForAll");
+  await contractNft['safeTransferFrom(address,address,uint256)'](from, to, tokenId);
+
+
+  console.log('nft transferred');
+  res.status(200).json({result:true});
 })
 
 

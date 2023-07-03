@@ -38,4 +38,8 @@ contract JobSearchNft is ERC721, ERC721URIStorage, Ownable {
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override(ERC721, IERC721) {
+        super.safeTransferFrom(from, to, tokenId); 
+    }
 }
