@@ -13,7 +13,8 @@ experience varchar(100),
 worklevel varchar(100),
 employeetype varchar(100),
 offersalary varchar(100),
-overview varchar(2000)
+overview varchar(2000),
+metadatacid varchar(200)
 );
 
 create table jobdescription (
@@ -101,3 +102,5 @@ Insert into jobdescription values(9, 'Experience conducting research and buildin
 Insert into jobdescription values(9, 'Excellent communication skills with a well-defined design process.');
 Insert into jobdescription values(9, 'Familiarity with design tools like Sketch and Figma');
 Insert into jobdescription values(9, 'Up-level our overall design and bring consistency to end-user facing properties');
+
+Alter table job add column metadatacid varchar(200);

@@ -3,43 +3,203 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "./SafeMath.sol";
 
-contract JobSearchNft is ERC721, ERC721URIStorage, Ownable {
+contract JobSearchNft is ERC721URIStorage {
     using Counters for Counters.Counter;
-
+    //_tokenIdCounter has the most recent minted tokenId;
     Counters.Counter private _tokenIdCounter;
+    //Keeps track of the number of items sold on the marketplace
+    Counters.Counter private _itemsSold;
 
-    constructor() ERC721("JobSearchNft", "JSN") {}
+    //owner is the contract address that created the smart contract
+    address payable owner;
 
-    function safeMint(address to, string memory uri) public onlyOwner {
-        uint256 tokenId = _tokenIdCounter.current();
+    //The fee charged by the marketplace to be allowed to list an NFT
+    uint256 listPrice = 0.01 ether;
+
+    uint256 public basePercent = 100;
+
+    //The structure to store info about a listed token
+    struct ListedToken {
+        uint256 tokenId;
+        address payable owner;
+        address payable seller;
+        uint256 price;
+        bool currentlyListed;
+    }
+
+    // the event emitted when a token is successfully listed
+    event TokenListedSuccess (
+        uint256 indexed tokenId,
+        address owner,
+        address seller,
+        uint256 price,
+        bool currentlyListed
+    );
+
+    //This mapping maps tokenId to token info and is helpful when retrieving details about a tokenId
+    mapping(uint256 => ListedToken) private idToListedToken;
+
+    //Store tokenid and this nft's creator for royalties
+    mapping(uint256 => address) private idToCreator;
+
+    constructor() ERC721("JobSearchNft", "JSN") {
+        owner = payable(msg.sender);
+    }
+
+    //The first tiem a token is created, it is listed here
+    function createToken(string memory tokenURI, uint256 price) public payable returns (uint) {
+        //Increment the tokenId counter, which is keeping track of the number of minted NFTs
         _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
+        uint256 newTokenId = _tokenIdCounter.current();
+
+        //Mint the NFT with tokenId newTokenId to the address who called createToken
+        _safeMint(msg.sender, newTokenId);
+
+        //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
+        _setTokenURI(newTokenId, tokenURI);
+
+        setApprovalForAll(address(this), true);
+
+        //Helper function to update Global variables and emit an event
+        createListedToken(newTokenId, price);
+
+        idToCreator[newTokenId] = msg.sender;
+
+        return newTokenId;
+    }
+    // verify if contract owner can transfer the balance of contract.
+    function createListedToken(uint256 tokenId, uint256 price) private {
+        //Make sure the sender sent enough ETH to pay for listing
+        require(msg.value == listPrice, "Hopefully sending the correct price");
+        //Just sanity check
+        require(price > 0, "Make sure the price isn't negative");
+
+        //Update the mapping of tokenId's to Token details, useful for retrieval functions
+        idToListedToken[tokenId] = ListedToken(
+            tokenId,
+            payable(address(this)),
+            payable(msg.sender),
+            price,
+            true
+        );
+
+        _transfer(msg.sender, address(this), tokenId);
+
+        //Emit the event for successful transfer. The frontend parses this message and updates the end user
+        emit TokenListedSuccess(
+            tokenId, 
+            address(this), 
+            msg.sender, 
+            price, 
+            true
+        );
+
     }
 
-    // The following functions are overrides required by Solidity.
+    function getAllNFTs() public view returns (ListedToken[] memory) {
+        uint nftCount = _tokenIdCounter.current();
+        ListedToken[] memory tokens = new ListedToken[](nftCount);
+        uint currentIndex = 0;
 
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
-        super._burn(tokenId);
+        //at the moment currentlyListed is true for all, if it becomes false in the future we will 
+        //filter out currentlyListed == false over here
+        for (uint i = 0; i < nftCount; i++) {
+            uint currentId = i + 1;
+            ListedToken storage currentItem = idToListedToken[currentId];
+            tokens[currentIndex] = currentItem;
+            currentIndex += 1;
+        }
+        //the array 'tokens' has the list of all NFTs in the marketplace
+        return tokens;
     }
 
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        override(ERC721, ERC721URIStorage)
-        returns (string memory)
-    {
-        return super.tokenURI(tokenId);
+    //Returns alll the NFTs that the current user is owner or seller in
+    function getMyNFTs() public view returns (ListedToken[] memory) {
+        uint totalItemCount = _tokenIdCounter.current();
+        uint itemCount = 0;
+        uint currentIndex = 0;
+
+        //Important to get a count of all the NFTs that belong to the user before we can make an array for them
+        for (uint i = 0; i < totalItemCount; i++) {
+            if (idToListedToken[i + 1].owner == msg.sender || idToListedToken[i + 1].seller == msg.sender) {
+                itemCount += 1;
+            }
+        }
+
+        //Once you have the count of relevant NFTs, create an array then store all the NFTs in it
+        ListedToken[] memory items = new ListedToken[](itemCount);
+        for(uint i = 0; i < totalItemCount; i++) {
+            if (idToListedToken[i + 1].owner == msg.sender || idToListedToken[i + 1].seller == msg.sender) {
+                uint currentId = i + 1;
+                ListedToken storage currentItem = idToListedToken[currentId];
+                items[currentIndex] = currentItem;
+                currentIndex += 1;
+            }
+        }
+        return items;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721URIStorage) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function executeSale(uint256 tokenId) public payable {
+        uint price = idToListedToken[tokenId].price;
+        address seller = idToListedToken[tokenId].seller;
+        require(msg.value == price, "Please submit the asking price in order to complete the purchase");
+
+        //update the details of the token
+        idToListedToken[tokenId].currentlyListed = true;
+        idToListedToken[tokenId].seller = payable(msg.sender);
+        _itemsSold.increment();
+
+        //Actually transfer the token to the new owner
+        _transfer(address(this), msg.sender, tokenId);
+        //approve the marketplace to sell NFTs on your behalf
+        approve(address(this), tokenId);
+
+        //Transfer the listing fee to the marketplace creator
+        payable(owner).transfer(listPrice);
+
+        //Adding Royalties such that the original NFT creator gets 10% of the proceeds every time that NFT gets sold
+        address creatorAddr = idToCreator[tokenId];
+        uint256 fee = tenPercent(msg.value);
+        payable(creatorAddr).transfer(fee);
+        //Transfer the proceeds from the sale to the seller of the NFT
+        payable(seller).transfer(msg.value - fee);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override(ERC721, IERC721) {
-        super.safeTransferFrom(from, to, tokenId); 
+    function tenPercent(uint256 _value) public view returns(uint256) {
+        uint256 roundValue = SafeMath.ceil(_value, basePercent);
+        uint256 percent = SafeMath.div(SafeMath.mul(roundValue, basePercent), 1000);
+        return percent;
+    }
+
+    function updateListPrice(uint256 _listPrice) public payable {
+        require(owner == msg.sender, "Only owner can update listing price");
+        listPrice = _listPrice;
+    }
+
+    function getListPrice() public view returns(uint256) {
+        return listPrice;
+    }
+
+    function getLatestIdToListedToken() public view returns(ListedToken memory) {
+        uint256 currentTokenId = _tokenIdCounter.current();
+        return idToListedToken[currentTokenId];
+    }
+
+    function getListedTokenForId(uint256 tokenId) public view returns(ListedToken memory) {
+        return idToListedToken[tokenId];
+    }
+
+    function getCurrentToken() public view returns(uint256) {
+        return _tokenIdCounter.current();
+    }
+
+    //We might add a resell token function in the future
+    //In that case, tokens won't be listed by default but users can send a request to actually list a token
+    //Currently NFTs are listed by default
+    function resellNft(uint256 tokenId, uint256 price) public payable {
+        createListedToken(tokenId, price);
     }
 }

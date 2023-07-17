@@ -7,13 +7,14 @@ async function main() {
     await nft.deployed();
   
     console.log("NFT deployed to:", nft.address);
-   
-    // mint one to yourself!
-    const signer0 = await ethers.provider.getSigner(0);
-    // update the IPFS CID to be your metadata CID
-    await nft.safeMint(await signer0.getAddress(), "ipfs://Qmbp8X71YtDdt8Hi5inoEmeys5C6U91JUYWVr3ktX8Gwqm");
+    //NFT deployed to: 0xa3b802d484980baF12d816Ec5f898919b7a73874
+    
+    // // mint one to yourself!
+    // const signer0 = await ethers.provider.getSigner(0);
+    // // update the IPFS CID to be your metadata CID
+    // await nft.safeMint(await signer0.getAddress(), "ipfs://Qmbp8X71YtDdt8Hi5inoEmeys5C6U91JUYWVr3ktX8Gwqm");
   
-    console.log("NFT Minted!");
+    // console.log("NFT Minted!");
   }
   
   main()

@@ -1,8 +1,11 @@
-require("dotenv").config()
+require("dotenv").config();
 const ethers = require('ethers');
+const axios = require('axios');
 
 var {createClient} = require('@vercel/postgres');
 var express = require('express');
+// const { Network, Alchemy } = require('alchemy-sdk');
+
 var router = express.Router();
 
 const contractNftABI = [
@@ -445,11 +448,17 @@ const contractNftABI = [
   }
 ];
 
-const contractNftAddr = '0x4078b61a70ae9a36b1c1c380e1909b02af9590cb';
+// const settings = {
+//   apiKey: process.env.TESTNET_ALCHEMY_KEY,
+//   network: Network.ETH_GOERLI,
+// }
+// const alchemy = new Alchemy(settings);
+const nftContractAddr = process.env.NFT_CONTRACT_ADDRESS;
+const alchemyKey =  process.env.TESTNET_ALCHEMY_KEY;
 
 const provider = new ethers.providers.AlchemyProvider(
   'goerli',
-  process.env.TESTNET_ALCHEMY_KEY
+  alchemyKey
 );
 
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -491,13 +500,38 @@ router.get('/job', async function(req, res, next) {
   }
 });
 
+router.get('/getAllNfts', async function(req, res, next) {
+  //虽然在全局已经设置过，但在该接口还得设置一次，否则还是出现跨域问题。
+  //貌似问题出在该接口又请求了另一个域名的接口，但不确定具体什么原因。
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const options = {
+    method: 'GET',
+    url: `https://eth-mainnet.g.alchemy.com/nft/v3/${alchemyKey}/getNFTsForContract`,
+    params: {
+      contractAddress: nftContractAddr,
+      withMetadata: 'true'
+    },
+    headers: {accept: 'application/json'}
+  };
+  
+  axios.request(options).then(function (response) {
+      console.log(response.data);
+      res.status(200).json(response.data);
+      aa = response.data
+    }).catch(function (error) {
+      console.error(error);
+    });
+
+});
+
 router.get('/nft', async function(req, res, next) {
   
   const jobid = req.query.jobid;
   const useraddress = req.query.useraddress;
 
   const contractNft = new ethers.Contract(
-    contractNftAddr,
+    nftContractAddr,
     contractNftABI,
     wallet
   );

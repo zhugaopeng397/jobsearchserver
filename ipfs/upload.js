@@ -6,24 +6,24 @@ async function run() {
     const metadata = {
         path: '/',
         content: JSON.stringify({
-            name: "My First NFT",
+            name: "My Third NFT",
             attributes: [
             {
                 "trait_type": "Peace",
-                "value": "10" 
+                "value": "7" 
             },
             {
                 "trait_type": "Love",
-                "value": "100"
+                "value": "77"
             },
             {
                 "trait_type": "Web3",
-                "value": "999"
+                "value": "777"
             }
             ],
             // update the IPFS CID to be your image CID
-            image: "https://ipfs.io/ipfs/Qmb4rgWRqomezEcpY2nbg9wSajUdmX6vGi9YMTEN1NPDKW?filename=cuteboy1.jpg",
-            description: "A Cute Boy1!"
+            image: "https://ipfs.io/ipfs/QmXaK8XcTM3RNsPgEzMmzaUYiaiHovatGz5R1pUHUHr7t8?filename=cuteboy3.jpg",
+            description: "A Cute Boy3!"
         })
     };
 
