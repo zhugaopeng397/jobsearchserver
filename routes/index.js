@@ -1,13 +1,20 @@
+// import pinata from '../ipfs/pinata.js';
+
 require("dotenv").config();
 const ethers = require('ethers');
 const axios = require('axios');
 
 var {createClient} = require('@vercel/postgres');
 var express = require('express');
+
+const { testauth, uploadFromBuffer, uploadFileToIPFS, uploadJSONToIPFS } = require("../ipfs/pinata.js");
+
+// const pinata  = require("../ipfs/pinata.js");
+const multer = require('multer');
+const upload = multer();
 // const { Network, Alchemy } = require('alchemy-sdk');
 
 var router = express.Router();
-
 const contractNftABI = [
   {
     "inputs": [],
@@ -101,18 +108,36 @@ const contractNftABI = [
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
         "internalType": "address",
-        "name": "previousOwner",
+        "name": "owner",
         "type": "address"
       },
       {
-        "indexed": true,
+        "indexed": false,
         "internalType": "address",
-        "name": "newOwner",
+        "name": "seller",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "currentlyListed",
+        "type": "bool"
       }
     ],
-    "name": "OwnershipTransferred",
+    "name": "TokenListedSuccess",
     "type": "event"
   },
   {
@@ -178,6 +203,96 @@ const contractNftABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "basePercent",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "tokenURI",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      }
+    ],
+    "name": "createToken",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "executeSale",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllNFTs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "currentlyListed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct JobSearchNft.ListedToken[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -191,6 +306,158 @@ const contractNftABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getCurrentToken",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLatestIdToListedToken",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "currentlyListed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct JobSearchNft.ListedToken",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getListPrice",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getListedTokenForId",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "currentlyListed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct JobSearchNft.ListedToken",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMyNFTs",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address payable",
+            "name": "seller",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "currentlyListed",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct JobSearchNft.ListedToken[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
     "stateMutability": "view",
@@ -234,19 +501,6 @@ const contractNftABI = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "owner",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -266,28 +520,21 @@ const contractNftABI = [
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "renounceOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        "internalType": "string",
-        "name": "uri",
-        "type": "string"
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
       }
     ],
-    "name": "safeMint",
+    "name": "resellNft",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -395,6 +642,25 @@ const contractNftABI = [
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "_value",
+        "type": "uint256"
+      }
+    ],
+    "name": "tenPercent",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
       }
@@ -436,14 +702,14 @@ const contractNftABI = [
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "newOwner",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "_listPrice",
+        "type": "uint256"
       }
     ],
-    "name": "transferOwnership",
+    "name": "updateListPrice",
     "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "payable",
     "type": "function"
   }
 ];
@@ -462,7 +728,11 @@ const provider = new ethers.providers.AlchemyProvider(
 );
 
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-
+const contractNft = new ethers.Contract(
+  nftContractAddr,
+  contractNftABI,
+  wallet
+);
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
@@ -530,12 +800,6 @@ router.get('/nft', async function(req, res, next) {
   const jobid = req.query.jobid;
   const useraddress = req.query.useraddress;
 
-  const contractNft = new ethers.Contract(
-    nftContractAddr,
-    contractNftABI,
-    wallet
-  );
-
   if (jobid == 1) {
     metadataCID = "Qmbp8X71YtDdt8Hi5inoEmeys5C6U91JUYWVr3ktX8Gwqm";
   } else {
@@ -583,5 +847,96 @@ router.get('/nft/transfer', async function(req, res, next) {
   res.status(200).json({result:true});
 })
 
+
+router.post('/nft/uploadFile', upload.single('file'), async function(req, res, next) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  const file = req.file;
+  console.log("req.file===", file);
+  try {
+    //upload the file to IPFS
+    // const response = await uploadFileToIPFS(file);
+    const response = await uploadFromBuffer(file.buffer);
+    // const response = await testauth();
+    
+    console.log("response===",response);
+    if(response.success === true) {
+        console.log("Uploaded image to Pinata: ", response.pinataURL)
+        res.status(200).json({
+          success: true,
+          pinataURL:response.pinataURL
+        });
+    }
+  }
+  catch(error) {
+      console.log("Error during file upload", error);
+      res.status(200).json({
+        success: false,
+        message: error.message
+      });
+  }
+}) 
+
+router.post('/nft/listnft', async function(req, res, next) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  try {
+    const metadata = req.body;
+    console.log("metadata===", metadata);
+    // console.log("req===", req);
+
+    //upload the metadata JSON to IPFS
+    const response = await uploadJSONToIPFS(metadata);
+    if(response.success === true){
+      console.log("Uploaded JSON to Pinata: ", response.pinataURL);
+    
+      // const metadataURL = await uploadMetadataToIPFS(metadata);
+      const price = ethers.utils.parseUnits(metadata.price, 'ether');
+      console.log("price===", price);
+      let listingPrice = await contractNft.getListPrice();
+      listingPrice = listingPrice.toString();
+      console.log("listingPrice===", listingPrice);
+
+      //actually create the NFT
+      let transaction = await contractNft.createToken(response.pinataURL, price, { value: listingPrice });
+      await transaction.wait();
+      console.log("NFT listed successfully!");
+      res.status(200).json({
+        success: true
+      });
+    }
+  } catch(error) {
+    console.log(error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+})
+
+
+// //This function uploads the metadata to IPFS
+// async function uploadMetadataToIPFS(metadata) {
+//   // const {name, description, price} = formParams;
+//   // //Make sure that none of the fields are empty
+//   // if( !name || !description || !price || !fileURL)
+//   //     return;
+
+//   // const nftJSON = {
+//   //     name, description, price, image: fileURL
+//   // }
+
+//   try {
+//       //upload the metadata JSON to IPFS
+//       const response = await uploadJSONToIPFS(metadata);
+//       if(response.success === true){
+//           console.log("Uploaded JSON to Pinata: ", response);
+//           return response.pinataURL;
+//       }
+//   }
+//   catch(e) {
+//       console.log("error uploading JSON metadata:", e)
+//   }
+// }
 
 module.exports = router;
