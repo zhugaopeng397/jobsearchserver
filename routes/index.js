@@ -777,7 +777,7 @@ router.get('/getAllNfts', async function(req, res, next) {
 
   const options = {
     method: 'GET',
-    url: `https://eth-mainnet.g.alchemy.com/nft/v3/${alchemyKey}/getNFTsForContract`,
+    url: `https://eth-goerli.g.alchemy.com/nft/v3/${alchemyKey}/getNFTsForContract`,
     params: {
       contractAddress: nftContractAddr,
       withMetadata: 'true'
@@ -786,11 +786,10 @@ router.get('/getAllNfts', async function(req, res, next) {
   };
   
   axios.request(options).then(function (response) {
-      console.log(response.data);
+      console.log("response==", response);
       res.status(200).json(response.data);
-      aa = response.data
     }).catch(function (error) {
-      console.error(error);
+      console.log(error);
     });
 
 });
