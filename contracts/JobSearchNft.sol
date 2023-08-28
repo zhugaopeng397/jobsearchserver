@@ -70,6 +70,30 @@ contract JobSearchNft is ERC721URIStorage {
 
         return newTokenId;
     }
+
+    function updateToken(string memory tokenURI, uint256 tokenId) public payable returns (uint) {
+        //Increment the tokenId counter, which is keeping track of the number of minted NFTs
+        // _tokenIdCounter.increment();
+        // uint256 newTokenId = _tokenIdCounter.current();
+
+        //Mint the NFT with tokenId newTokenId to the address who called createToken
+        // _safeMint(msg.sender, newTokenId);
+
+        //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
+        _setTokenURI(tokenId, tokenURI);
+
+        // setApprovalForAll(address(this), true);
+
+        //Helper function to update Global variables and emit an event
+        // createListedToken(newTokenId, price);
+
+        // idToCreator[newTokenId] = msg.sender;
+
+        return tokenId;
+    }
+
+    
+
     // verify if contract owner can transfer the balance of contract.
     function createListedToken(uint256 tokenId, uint256 price) private {
         //Make sure the sender sent enough ETH to pay for listing
